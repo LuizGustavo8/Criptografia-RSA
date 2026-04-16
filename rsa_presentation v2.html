@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RSA — Eficiência e Algoritmos de Ataque</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#ffffff;--bg2:#f7f8fa;--bg3:#eef0f4;
+  --surface:#f3f4f8;--surface2:#e8eaf0;
+  --cyan:#0077b6;--cyan-dim:rgba(0,119,182,.08);
+  --green:#0a7c42;--green-dim:rgba(10,124,66,.08);
+  --amber:#b8660d;--amber-dim:rgba(184,102,13,.07);
+  --red:#c62828;--red-dim:rgba(198,40,40,.07);
+  --purple:#6a1b9a;--purple-dim:rgba(106,27,154,.07);
+  --text:#1a1a2e;--text2:#4a5068;--text3:#8890a4;
+  --font-display:'Outfit',sans-serif;
+  --font-body:'Outfit',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+  --font-serif:'Source Serif 4',serif;
+}
+html{font-size:16px;scroll-behavior:smooth}
+body{
+  font-family:var(--font-body);color:var(--text);
+  background:var(--bg);overflow:hidden;height:100vh;width:100vw;
+}
+
+/* ── SLIDE ENGINE ── */
+.deck{position:relative;width:100%;height:100vh;overflow:hidden}
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;justify-content:center;
+  padding:3.5rem 5rem;
+  opacity:0;pointer-events:none;
+  transition:opacity .5s ease,transform .5s ease;
+  transform:translateY(30px);
+  overflow-y:auto;
+}
+.slide.active{opacity:1;pointer-events:all;transform:translateY(0)}
+
+/* ── NAV ── */
+.nav{
+  position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:.75rem;
+  background:rgba(255,255,255,.92);backdrop-filter:blur(16px);
+  border:1px solid rgba(0,119,182,.15);border-radius:2rem;
+  padding:.5rem 1.2rem;z-index:100;
+  box-shadow:0 4px 24px rgba(0,0,0,.08);
+}
+.nav button{
+  background:none;border:none;color:var(--text2);
+  cursor:pointer;font-size:1.1rem;padding:.35rem .6rem;
+  border-radius:.5rem;transition:all .2s;
+  font-family:var(--font-body);
+}
+.nav button:hover{color:var(--cyan);background:var(--cyan-dim)}
+.nav .counter{
+  font-family:var(--font-mono);font-size:.8rem;color:var(--text3);
+  min-width:4rem;text-align:center;
+}
+.dots{display:flex;gap:4px}
+.dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--text3);transition:all .3s;cursor:pointer;
+}
+.dot.active{background:var(--cyan);box-shadow:0 0 6px rgba(0,119,182,.4)}
+
+/* ── PROGRESS ── */
+.progress{
+  position:fixed;top:0;left:0;height:3px;
+  background:linear-gradient(90deg,var(--cyan),var(--green));
+  z-index:101;transition:width .4s ease;
+}
+
+/* ── TYPOGRAPHY ── */
+h1{font-family:var(--font-display);font-weight:900;font-size:3.2rem;line-height:1.1;letter-spacing:-.03em}
+h2{font-family:var(--font-display);font-weight:700;font-size:2rem;line-height:1.2;letter-spacing:-.02em}
+h3{font-family:var(--font-display);font-weight:600;font-size:1.25rem;color:var(--cyan);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem}
+p,.body-text{font-weight:400;font-size:.95rem;line-height:1.65;color:var(--text2)}
+
+/* ── FORMULA BOX ── */
+.formula-box{
+  background:linear-gradient(135deg,rgba(0,119,182,.05),rgba(10,124,66,.03));
+  border:1px solid rgba(0,119,182,.18);
+  border-radius:12px;padding:1.2rem 1.6rem;
+  margin:.8rem 0;position:relative;overflow:hidden;
+}
+.formula-box::before{
+  content:'';position:absolute;top:0;left:0;width:4px;height:100%;
+  background:linear-gradient(180deg,var(--cyan),var(--green));border-radius:4px 0 0 4px;
+}
+.formula-box .katex{font-size:1.25rem!important;color:var(--text)}
+.formula-box .label{
+  font-family:var(--font-mono);font-size:.7rem;color:var(--cyan);
+  text-transform:uppercase;letter-spacing:.12em;margin-bottom:.5rem;display:block;
+}
+
+/* ── CODE BLOCK ── */
+.code-block{
+  background:#fafbfc;border:1px solid rgba(0,0,0,.08);
+  border-radius:10px;padding:1rem 1.2rem;
+  font-family:var(--font-mono);font-size:.78rem;line-height:1.7;
+  color:#24292e;overflow-x:auto;margin:.6rem 0;
+  position:relative;
+}
+.code-block .lang-tag{
+  position:absolute;top:.5rem;right:.75rem;
+  font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;
+}
+.kw{color:#d73a49}.fn{color:#6f42c1}.str{color:#032f62}
+.cm{color:#6a737d;font-style:italic}.num{color:#005cc5}.op{color:#d73a49}
+
+/* ── CARDS / GRID ── */
+.card{
+  background:var(--surface);border:1px solid rgba(0,0,0,.06);
+  border-radius:14px;padding:1.3rem 1.5rem;
+  transition:border-color .3s,box-shadow .3s;
+}
+.card:hover{border-color:rgba(0,119,182,.2);box-shadow:0 2px 12px rgba(0,119,182,.06)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+
+/* ── STAT CALLOUT ── */
+.stat{text-align:center;padding:1rem}
+.stat .num{font-family:var(--font-display);font-weight:900;font-size:2.8rem;display:block}
+.stat .lbl{font-size:.78rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:.2rem}
+
+/* ── TAG / BADGE ── */
+.tag{
+  display:inline-block;font-family:var(--font-mono);font-size:.68rem;
+  padding:.2rem .6rem;border-radius:6px;letter-spacing:.04em;
+  font-weight:600;
+}
+.tag.cyan{background:var(--cyan-dim);color:var(--cyan)}
+.tag.green{background:var(--green-dim);color:var(--green)}
+.tag.amber{background:var(--amber-dim);color:var(--amber)}
+.tag.red{background:var(--red-dim);color:var(--red)}
+.tag.purple{background:var(--purple-dim);color:var(--purple)}
+
+/* ── TABLE ── */
+.data-table{
+  width:100%;border-collapse:separate;border-spacing:0;
+  font-size:.82rem;margin:.8rem 0;
+}
+.data-table thead th{
+  background:var(--surface2);color:var(--cyan);
+  font-family:var(--font-mono);font-weight:600;font-size:.7rem;
+  text-transform:uppercase;letter-spacing:.1em;
+  padding:.7rem 1rem;text-align:left;
+  border-bottom:2px solid rgba(0,119,182,.2);
+}
+.data-table thead th:first-child{border-radius:8px 0 0 0}
+.data-table thead th:last-child{border-radius:0 8px 0 0}
+.data-table tbody td{
+  padding:.6rem 1rem;border-bottom:1px solid rgba(0,0,0,.05);
+  color:var(--text2);
+}
+.data-table tbody tr:hover td{background:rgba(0,119,182,.04)}
+
+/* ── STEP FLOW ── */
+.step-flow{display:flex;gap:.6rem;align-items:flex-start;flex-wrap:wrap}
+.step{
+  flex:1;min-width:140px;
+  background:var(--surface);border:1px solid rgba(0,0,0,.06);
+  border-radius:10px;padding:.9rem 1rem;position:relative;
+}
+.step .num-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:1.6rem;height:1.6rem;border-radius:50%;
+  background:var(--cyan-dim);color:var(--cyan);
+  font-family:var(--font-mono);font-size:.72rem;font-weight:700;
+  margin-bottom:.4rem;
+}
+.step .step-title{font-weight:600;font-size:.85rem;color:var(--text);margin-bottom:.2rem}
+.step .step-desc{font-size:.75rem;color:var(--text3);line-height:1.5}
+
+/* ── TIMELINE ── */
+.timeline{display:flex;gap:0;align-items:stretch;margin:.8rem 0}
+.timeline .t-item{
+  flex:1;text-align:center;padding:.8rem .6rem;position:relative;
+  border-top:3px solid var(--text3);
+}
+.timeline .t-item.highlight{border-color:var(--cyan)}
+.timeline .t-item .t-year{font-family:var(--font-mono);font-size:.72rem;color:var(--cyan);margin-bottom:.2rem}
+.timeline .t-item .t-label{font-size:.78rem;color:var(--text2);font-weight:500}
+.timeline .t-item .t-sub{font-size:.68rem;color:var(--text3)}
+
+/* ── EXAMPLE BOX ── */
+.example-box{
+  background:linear-gradient(135deg,rgba(184,102,13,.04),rgba(184,102,13,.02));
+  border:1px solid rgba(184,102,13,.18);border-radius:12px;
+  padding:1rem 1.3rem;margin:.6rem 0;
+}
+.example-box::before{content:'';display:none}
+.example-box .ex-title{
+  font-family:var(--font-mono);font-size:.7rem;color:var(--amber);
+  text-transform:uppercase;letter-spacing:.12em;margin-bottom:.4rem;
+}
+.example-box pre{
+  font-family:var(--font-mono);font-size:.78rem;line-height:1.6;
+  color:var(--text);white-space:pre-wrap;
+}
+
+/* ── TITLE SLIDE ── */
+.slide-title{
+  justify-content:center;align-items:center;text-align:center;
+  background:radial-gradient(ellipse at 50% 50%,rgba(0,119,182,.04) 0%,transparent 70%),var(--bg);
+}
+.slide-title h1{font-size:5rem;margin-bottom:.5rem}
+.slide-title h1 .accent{
+  background:linear-gradient(135deg,var(--cyan),var(--green));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.slide-title .subtitle{
+  font-family:var(--font-serif);font-style:italic;
+  font-size:1.3rem;color:var(--text2);margin-bottom:1.5rem;
+}
+.slide-title .meta{font-size:.82rem;color:var(--text3);line-height:1.8}
+
+/* ── SECTION HEADER SLIDE ── */
+.section-header{
+  justify-content:center;align-items:flex-start;
+  background:radial-gradient(ellipse at 20% 80%,rgba(0,119,182,.04) 0%,transparent 60%),var(--bg);
+}
+.section-header .section-num{
+  font-family:var(--font-mono);font-size:.8rem;color:var(--cyan);
+  letter-spacing:.15em;text-transform:uppercase;margin-bottom:.5rem;
+}
+
+/* ── QUOTE ── */
+.quote{
+  border-left:3px solid var(--cyan);padding:.8rem 1.5rem;
+  margin:1rem 0;font-family:var(--font-serif);font-style:italic;
+  font-size:1.05rem;color:var(--text);line-height:1.6;
+}
+
+/* ── SPLIT LAYOUT ── */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start;height:100%}
+.split.wide-left{grid-template-columns:1.2fr .8fr}
+.split.wide-right{grid-template-columns:.8fr 1.2fr}
+
+/* ── ANIMATIONS ── */
+.slide.active .fade-up{animation:fadeUp .6s ease forwards}
+.slide.active .fade-up-d1{animation:fadeUp .6s .1s ease forwards;opacity:0}
+.slide.active .fade-up-d2{animation:fadeUp .6s .2s ease forwards;opacity:0}
+.slide.active .fade-up-d3{animation:fadeUp .6s .3s ease forwards;opacity:0}
+.slide.active .fade-up-d4{animation:fadeUp .6s .4s ease forwards;opacity:0}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── GLOW EFFECTS ── */
+.glow-cyan{text-shadow:none}
+.glow-green{text-shadow:none}
+
+/* ── SCROLLBAR ── */
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--text3);border-radius:4px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .slide{padding:2rem 2rem}
+  h1{font-size:2.2rem}
+  .slide-title h1{font-size:3rem}
+  .grid-2,.split{grid-template-columns:1fr}
+  .grid-3{grid-template-columns:1fr 1fr}
+  .grid-4{grid-template-columns:1fr 1fr}
+  .step-flow{flex-direction:column}
+  .nav{bottom:.75rem;padding:.4rem .8rem}
+}
+
+/* ── KEY BINDINGS HINT ── */
+.key-hint{
+  position:fixed;top:1rem;right:1.5rem;z-index:100;
+  font-family:var(--font-mono);font-size:.65rem;color:var(--text3);
+  opacity:.5;transition:opacity .3s;
+}
+.key-hint:hover{opacity:1}
+.key-hint kbd{
+  background:var(--surface);border:1px solid rgba(0,0,0,.1);
+  border-radius:4px;padding:.1rem .35rem;margin:0 .1rem;
+}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="key-hint"><kbd>←</kbd> <kbd>→</kbd> para navegar</div>
+
+<div class="deck" id="deck">
+
+<!-- ═══════ SLIDE 1 — TÍTULO ═══════ -->
+<div class="slide slide-title active" data-slide="0">
+  <div class="fade-up">
+    <h1><span class="accent">RSA</span></h1>
+    <div class="subtitle">Eficiência e Algoritmos de Ataque</div>
+    <p class="meta" style="margin-bottom:.8rem">Tópicos Especiais de Matemática: Criptografia — CEFET-MG</p>
+    <p class="meta">Alline Santos Ferreira · Filipe Pereira Lima Bicalho<br>Luiz Gustavo Barbosa Camargos · Samuel Pedro Fernandes Amorim</p>
+    <p class="meta" style="margin-top:.8rem;color:var(--text3)">Belo Horizonte, 2026</p>
+  </div>
+</div>
+
+<!-- ═══════ SLIDE 2 — OBJETIVO ═══════ -->
+<div class="slide" data-slide="1">
+  <h2 class="fade-up" style="margin-bottom:1.5rem">Objetivo</h2>
+  <p class="body-text fade-up-d1" style="max-width:700px;font-size:1.05rem;margin-bottom:2rem">
+    Analisar a eficiência do RSA, suas variantes e, principalmente, detalhar os <strong style="color:var(--cyan)">algoritmos de ataque</strong> com exemplos práticos, pseudocódigo e comparação de desempenho.
+  </p>
+  <div class="grid-3 fade-up-d2">
+    <div class="card">
+      <h3 style="color:var(--green)">Fundamentos</h3>
+      <p style="font-size:.85rem;color:var(--text2)">Teoria dos Números, aritmética modular, Euler-Fermat, fatoração</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--amber)">Variantes</h3>
+      <p style="font-size:.85rem;color:var(--text2)">Assinaturas digitais, RSA-OAEP, RSA-PSS, Multiprime, CRT</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--red)">Ataques</h3>
+      <p style="font-size:.85rem;color:var(--text2)">Fatoração (6 algoritmos) e implementação (4 tipos) com código</p>
+    </div>
+  </div>
+  <p class="fade-up-d3" style="margin-top:1.5rem;font-size:.82rem;color:var(--text3);text-align:center">
+    Conceitos centrais: aritmética modular · Euler-Fermat · fatoração de inteiros · funções de mão única
+  </p>
+</div>
+
+<!-- ═══════ SLIDE 3 — FUNDAMENTOS ═══════ -->
+<div class="slide" data-slide="2">
+  <h2 class="fade-up" style="margin-bottom:.4rem">Fundamentos Matemáticos</h2>
+  <p class="fade-up" style="font-size:.82rem;color:var(--text3);margin-bottom:1.2rem">RSA (Rivest, Shamir, Adleman, 1977) — sistema de chave pública baseado na dificuldade de fatorar <span class="katex-inline">n = p \cdot q</span></p>
+  <div class="grid-2 fade-up-d1">
+    <div>
+      <h3>Geração de Chaves</h3>
+      <div class="card" style="margin-bottom:.8rem">
+        <ol style="font-size:.85rem;color:var(--text2);line-height:2;padding-left:1.2rem">
+          <li>Escolher dois primos distintos <span class="katex-inline">p</span> e <span class="katex-inline">q</span></li>
+          <li>Calcular <span class="katex-inline">n = p \cdot q</span> e <span class="katex-inline">\varphi(n) = (p-1)(q-1)</span></li>
+          <li>Selecionar <span class="katex-inline">e</span> coprimo a <span class="katex-inline">\varphi(n)</span></li>
+          <li>Calcular <span class="katex-inline">d \equiv e^{-1} \pmod{\varphi(n)}</span> via Euclides Estendido</li>
+        </ol>
+      </div>
+    </div>
+    <div>
+      <h3>Cifração e Decifração</h3>
+      <div class="formula-box" style="margin-bottom:.6rem">
+        <span class="label">Chaves</span>
+        <div class="katex-block">Pública:\ (n, e) \qquad Privada:\ (n, d)</div>
+      </div>
+      <div class="formula-box" style="margin-bottom:.6rem">
+        <span class="label">Cifrar / Decifrar</span>
+        <div class="katex-block">c \equiv m^e \pmod{n} \qquad m \equiv c^d \pmod{n}</div>
+      </div>
+      <div class="formula-box">
+        <span class="label">Prova (Euler-Fermat)</span>
+        <div class="katex-block">(m^e)^d = m^{1+k\varphi(n)} \equiv m \pmod{n}</div>
+      </div>
+    </div>
+  </div>
+  <p class="fade-up-d2" style="font-size:.82rem;color:var(--text3);margin-top:.8rem">
+    <span class="tag cyan">CRT</span> O Teorema Chinês do Resto acelera a decifração ~4×: calcula separadamente mod p e mod q, depois recombina.
+  </p>
+</div>
+
+<!-- ═══════ SLIDE 4 — ASSINATURAS E VARIANTES ═══════ -->
+<div class="slide" data-slide="3">
+  <h2 class="fade-up" style="margin-bottom:1rem">Assinaturas Digitais e Variantes</h2>
+  <div class="formula-box fade-up-d1" style="margin-bottom:1.2rem">
+    <span class="label">Assinatura Digital</span>
+    <div class="katex-block">Assinar:\ s \equiv h(m)^d \pmod{n} \qquad Verificar:\ s^e \pmod{n} \stackrel{?}{=} h(m)</div>
+  </div>
+  <div class="grid-2 fade-up-d2" style="gap:1rem">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <h3 style="margin-bottom:0">RSA-OAEP</h3>
+        <span class="tag green">CIFRAÇÃO</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--text2)">Padding probabilístico (PKCS#1 v2). Adiciona aleatoriedade antes de cifrar → previne ataques determinísticos.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <h3 style="margin-bottom:0">RSA-PSS</h3>
+        <span class="tag green">ASSINATURA</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--text2)">Assinatura com padding probabilístico e prova formal de segurança redutível ao problema RSA.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <h3 style="margin-bottom:0">Multiprime</h3>
+        <span class="tag amber">PERFORMANCE</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--text2)"><span class="katex-inline">n = p_1 \cdot p_2 \cdots p_k</span> (3+ primos). Decifração mais rápida via CRT, mas primos menores.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <h3 style="margin-bottom:0">RSA + CRT</h3>
+        <span class="tag amber">PERFORMANCE</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--text2)"><span class="katex-inline">m_p = c^{d \bmod p-1} \bmod p</span>, <span class="katex-inline">m_q = c^{d \bmod q-1} \bmod q</span> → ~4× mais rápido.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SLIDE 5 — EFICIÊNCIA ═══════ -->
+<div class="slide" data-slide="4">
+  <h2 class="fade-up" style="margin-bottom:1.2rem">Análise da Eficiência</h2>
+  <div class="grid-4 fade-up-d1" style="margin-bottom:1.5rem">
+    <div class="card stat"><span class="num" style="color:var(--cyan)">2048</span><span class="lbl">bits (mínimo)</span></div>
+    <div class="card stat"><span class="num" style="color:var(--green)">4096</span><span class="lbl">bits (longo prazo)</span></div>
+    <div class="card stat"><span class="num" style="color:var(--amber)">~4×</span><span class="lbl">ganho com CRT</span></div>
+    <div class="card stat"><span class="num" style="color:var(--red)">10<sup style="font-size:.5em">40</sup>s</span><span class="lbl">fatorar 100 dígitos</span></div>
+  </div>
+  <div class="grid-2 fade-up-d2">
+    <div class="card">
+      <h3 style="color:var(--amber)">Esquemas Híbridos</h3>
+      <p style="font-size:.85rem;color:var(--text2);margin-bottom:.5rem">RSA é ~1000× mais lento que AES. Na prática:</p>
+      <ol style="font-size:.82rem;color:var(--text2);line-height:1.9;padding-left:1.2rem">
+        <li>Gerar chave AES aleatória (chave de sessão)</li>
+        <li>Cifrar mensagem com AES (rápido)</li>
+        <li>Cifrar apenas a chave AES com RSA</li>
+      </ol>
+      <p style="font-size:.78rem;color:var(--text3);margin-top:.4rem">Combina velocidade do AES com segurança do RSA.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--green)">Square-and-Multiply</h3>
+      <p style="font-size:.85rem;color:var(--text2);margin-bottom:.5rem">Exponenciação modular eficiente:</p>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.7">
+        Converte expoente em binário. Para cada bit: quadra o acumulador. Se bit = 1: multiplica pela base.
+      </p>
+      <div class="formula-box" style="margin-top:.6rem;padding:.8rem 1rem">
+        <div class="katex-block">O(e) \longrightarrow O(\log e)\ \text{multiplicações}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SLIDE 6 — PANORAMA DOS ATAQUES ═══════ -->
+<div class="slide" data-slide="5">
+  <h2 class="fade-up" style="margin-bottom:.4rem">Panorama dos Algoritmos de Ataque</h2>
+  <p class="fade-up body-text" style="margin-bottom:1rem;font-size:.85rem">Os próximos slides detalham cada algoritmo com funcionamento, exemplo numérico e pseudocódigo.</p>
+  <div class="grid-2 fade-up-d1" style="gap:1.5rem">
+    <div>
+      <h3 style="color:var(--red)">Ataques de Fatoração</h3>
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        <div class="card" style="display:flex;align-items:center;gap:1rem;padding:.8rem 1rem">
+          <span class="num-badge" style="display:inline-flex;align-items:center;justify-content:center;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--red-dim);color:var(--red);font-family:var(--font-mono);font-size:.75rem;font-weight:700;flex-shrink:0">1</span>
+          <div style="flex:1"><strong style="font-size:.85rem">Divisão por Tentativa</strong><br><span style="font-size:.75rem;color:var(--text3)"><span class="katex-inline">O(\sqrt{n})</span></span></div>
+        </div>
+        <div class="card" style="display:flex;align-items:center;gap:1rem;padding:.8rem 1rem">
+          <span class="num-badge" style="display:inline-flex;align-items:center;justify-content:center;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--red-dim);color:var(--red);font-family:var(--font-mono);font-size:.75rem;font-weight:700;flex-shrink:0">2</span>
+          <div style="flex:1"><strong style="font-size:.85rem">Método ρ de Pollard</strong><br><span style="font-size:.75rem;color:var(--text3)"><span class="katex-inline">O(n^{1/4})</span></span></div>
+        </div>
+        <div class="card" style="display:flex;align-items:center;gap:1rem;padding:.8rem 1rem">
+          <span class="num-badge" style="display:inline-flex;align-items:center;justify-content:center;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--red-dim);color:var(--red);font-family:var(--font-mono);font-size:.75rem;font-weight:700;flex-shrink:0">3</span>
+          <div style="flex:1"><strong style="font-size:.85rem">Método p−1 de Pollard</strong><br><span style="font-size:.75rem;color:var(--text3)">Depende de B</span></div>
+        </div>
+        <div class="card" style="display:flex;align-items:center;gap:1rem;padding:.8rem 1rem">
+          <span class="num-badge" style="display:inline-flex;align-items:center;justify-content:center;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--red-dim);color:var(--red);font-family:var(--font-mono);font-size:.75rem;font-weight:700;flex-shrink:0">4</span>
+          <div style="flex:1"><strong style="font-size:.85rem">Crivo Quadrático (QS)</strong><br><span style="font-size:.75rem;color:var(--text3)"><span class="katex-inline">L_n[1/2, 1]</span></span></div>
+        </div>
+        <div class="card" style="display:flex;align-items:center;gap:1rem;padding:.8rem 1rem">
+          <span class="num-badge" style="display:inline-flex;align-items:center;justify-content:center;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--red-dim);color:var(--red);font-family:var(--font-mono);font-size:.75rem;font-weight:700;flex-shrink:0">5</span>
+          <div style="flex:1"><strong style="font-size:.85rem">GNFS</strong><br><span style="font-size:.75rem;color:var(--text3)"><span class="katex-inline">L_n[1/3, 1.92]</span></span></div>
+        </div>
+        <div class="card" style="display:flex;align-items:center;gap:1rem;padding:.8rem 1rem">
+          <span class="num-badge" style="display:inline-flex;align-items:center;justify-content:center;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--red-dim);color:var(--red);font-family:var(--font-mono);font-size:.75rem;font-weight:700;flex-shrink:0">6</span>
+          <div style="flex:1"><strong style="font-size:.85rem">Algoritmo de Shor</strong><br><span style="font-size:.75rem;color:var(--text3)"><span class="katex-inline">O((\log n)^3)</span> — quântico</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3 style="color:var(--purple)">Ataques por Implementação</h3>
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        <div class="card" style="display:flex;align-items:center;gap:1rem;padding:.8rem 1rem">
+          <span class="num-badge" style="display:inline-flex;align-items:center;justify-content:center;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--purple-dim);color:var(--purple);font-family:var(--font-mono);font-size:.75rem;font-weight:700;flex-shrink:0">7</span>
+          <div style="flex:1"><strong style="font-size:.85rem">Ataque de Wiener</strong><br><span style="font-size:.75rem;color:var(--text3)">d pequeno</span></div>
+        </div>
+        <div class="card" style="display:flex;align-items:center;gap:1rem;padding:.8rem 1rem">
+          <span class="num-badge" style="display:inline-flex;align-items:center;justify-content:center;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--purple-dim);color:var(--purple);font-family:var(--font-mono);font-size:.75rem;font-weight:700;flex-shrink:0">8</span>
+          <div style="flex:1"><strong style="font-size:.85rem">Ataque de Hastad</strong><br><span style="font-size:.75rem;color:var(--text3)">broadcast, e pequeno</span></div>
+        </div>
+        <div class="card" style="display:flex;align-items:center;gap:1rem;padding:.8rem 1rem">
+          <span class="num-badge" style="display:inline-flex;align-items:center;justify-content:center;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--purple-dim);color:var(--purple);font-family:var(--font-mono);font-size:.75rem;font-weight:700;flex-shrink:0">9</span>
+          <div style="flex:1"><strong style="font-size:.85rem">Bleichenbacher</strong><br><span style="font-size:.75rem;color:var(--text3)">padding PKCS#1 v1.5</span></div>
+        </div>
+        <div class="card" style="display:flex;align-items:center;gap:1rem;padding:.8rem 1rem">
+          <span class="num-badge" style="display:inline-flex;align-items:center;justify-content:center;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--purple-dim);color:var(--purple);font-family:var(--font-mono);font-size:.75rem;font-weight:700;flex-shrink:0">10</span>
+          <div style="flex:1"><strong style="font-size:.85rem">Canal Lateral</strong><br><span style="font-size:.75rem;color:var(--text3)">timing, power, fault</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SLIDE 7 — DIVISÃO POR TENTATIVA ═══════ -->
+<div class="slide" data-slide="6">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1rem">
+    <h2 class="fade-up">Ataque 1 — Divisão por Tentativa</h2>
+    <span class="tag red fade-up">O(√n) — exponencial</span>
+  </div>
+  <p class="body-text fade-up" style="margin-bottom:1rem">Testa todos os inteiros de 2 até <span class="katex-inline">\sqrt{n}</span> como divisores. O mais intuitivo e antigo.</p>
+  <div class="grid-2 fade-up-d1" style="gap:1.5rem">
+    <div>
+      <div class="code-block">
+        <span class="lang-tag">Python</span>
+<span class="kw">def</span> <span class="fn">divisao_tentativa</span>(n):
+    <span class="kw">for</span> d <span class="kw">in</span> <span class="fn">range</span>(<span class="num">2</span>, <span class="fn">isqrt</span>(n) + <span class="num">1</span>):
+        <span class="kw">if</span> n % d == <span class="num">0</span>:
+            <span class="kw">return</span> d   <span class="cm"># fator!</span>
+    <span class="kw">return</span> n           <span class="cm"># n é primo</span>
+      </div>
+      <div class="example-box" style="margin-top:.8rem">
+        <div class="ex-title">Exemplo: Fatorar 91</div>
+<pre>91 ÷ 2? Não (ímpar)
+91 ÷ 3? Não (9+1=10)
+91 ÷ 5? Não
+91 ÷ 7? <strong style="color:var(--green)">SIM → 91 = 7 × 13 ✓</strong>
+Parou antes de √91 ≈ 9.5</pre>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="background:linear-gradient(135deg,rgba(198,40,40,.05),rgba(198,40,40,.02));border-color:rgba(198,40,40,.15)">
+        <h3 style="color:var(--red)">Limite Prático</h3>
+        <p style="font-size:.85rem;color:var(--text2);line-height:1.7">
+          Para <span class="katex-inline">n</span> com 100 dígitos:
+        </p>
+        <div class="formula-box" style="margin:.8rem 0;background:rgba(198,40,40,.05);border-color:rgba(198,40,40,.15)">
+          <div class="katex-block">\sqrt{n} \approx 10^{50}\ \text{divisões}</div>
+        </div>
+        <p style="font-size:.85rem;color:var(--text2);line-height:1.7">
+          A <span class="katex-inline">10^{10}</span> div/s → <span class="katex-inline">10^{40}</span> segundos.<br>
+          Idade do universo: <span class="katex-inline">\sim 4 \times 10^{17}</span> s.<br>
+          Ou seja: <strong style="color:var(--red)">~10²² vezes a idade do universo!</strong>
+        </p>
+        <p style="font-size:.78rem;color:var(--text3);margin-top:.6rem">Útil como primeiro filtro: se n tem fator primo &lt; 10⁶, encontra rápido.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SLIDE 8 — POLLARD RHO ═══════ -->
+<div class="slide" data-slide="7">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.6rem">
+    <h2 class="fade-up">Ataque 2 — Método ρ de Pollard</h2>
+    <span class="tag amber fade-up">O(n<sup>1/4</sup>)</span>
+  </div>
+  <p class="body-text fade-up" style="margin-bottom:1rem;font-size:.88rem">
+    Gera sequência pseudoaleatória <span class="katex-inline">x_{i+1} = x_i^2 + 1 \bmod n</span>. Pelo paradoxo do aniversário, após <span class="katex-inline">\sim\sqrt{p}</span> iterações, dois valores colidem mod p. Detecta com o algoritmo da lebre e tartaruga (Floyd).
+  </p>
+  <div class="grid-2 fade-up-d1" style="gap:1.5rem">
+    <div>
+      <div class="code-block">
+        <span class="lang-tag">Python</span>
+<span class="kw">def</span> <span class="fn">rho_pollard</span>(n):
+    x = y = <span class="num">2</span>
+    d = <span class="num">1</span>
+    f = <span class="kw">lambda</span> x: (x*x + <span class="num">1</span>) % n
+    <span class="kw">while</span> d == <span class="num">1</span>:
+        x = f(x)         <span class="cm"># tartaruga: 1 passo</span>
+        y = f(f(y))       <span class="cm"># lebre: 2 passos</span>
+        d = gcd(abs(x-y), n)
+    <span class="kw">if</span> d != n:
+        <span class="kw">return</span> d          <span class="cm"># fator!</span>
+      </div>
+    </div>
+    <div>
+      <div class="example-box">
+        <div class="ex-title">Exemplo: n = 8051</div>
+<pre>f(x) = x² + 1 mod 8051
+x₀ = 2
+x₁ = f(2) = 5
+x₂ = f(5) = 26
+x₃ = f(26) = 677
+...
+Iteração 8:
+  tartaruga = 2871
+  lebre = 1671
+  gcd(|2871−1671|, 8051)
+  = gcd(1200, 8051) = <strong style="color:var(--green)">97</strong>
+<strong style="color:var(--green)">8051 = 83 × 97 ✓</strong></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SLIDE 9 — P-1 POLLARD ═══════ -->
+<div class="slide" data-slide="8">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.6rem">
+    <h2 class="fade-up">Ataque 3 — Método p−1 de Pollard</h2>
+    <span class="tag amber fade-up">Depende de B</span>
+  </div>
+  <p class="body-text fade-up" style="margin-bottom:.6rem;font-size:.88rem">
+    Se <span class="katex-inline">(p-1)</span> é B-smooth (todos os fatores primos ≤ B), pelo Pequeno Teorema de Fermat: <span class="katex-inline">a^{p-1} \equiv 1 \pmod{p}</span>.
+  </p>
+  <div class="formula-box fade-up-d1" style="margin-bottom:1rem">
+    <span class="label">Ideia Central</span>
+    <div class="katex-block">M = \text{lcm}(1, 2, \ldots, B) \quad\Longrightarrow\quad p \mid \gcd(a^M - 1,\ n)</div>
+  </div>
+  <div class="grid-2 fade-up-d2" style="gap:1.5rem">
+    <div>
+      <div class="code-block">
+        <span class="lang-tag">Python</span>
+<span class="kw">def</span> <span class="fn">p_menos_1</span>(n, B):
+    a = <span class="num">2</span>
+    <span class="kw">for</span> q <span class="kw">in</span> <span class="fn">primos_ate</span>(B):
+        e = <span class="fn">floor</span>(log(B) / log(q))
+        a = <span class="fn">pow</span>(a, q**e, n)
+    d = <span class="fn">gcd</span>(a - <span class="num">1</span>, n)
+    <span class="kw">if</span> <span class="num">1</span> < d < n:
+        <span class="kw">return</span> d  <span class="cm"># fator!</span>
+      </div>
+    </div>
+    <div>
+      <div class="example-box">
+        <div class="ex-title">Exemplo: n = 5917, B = 5</div>
+<pre>M = lcm(1,2,3,4,5) = 60
+a = 2
+Passo 1: a = 2⁴ mod 5917 = 16   (q=2)
+Passo 2: a = 16³ mod 5917 = 4096 (q=3)
+Passo 3: a = 4096⁵ mod 5917 = 3309 (q=5)
+gcd(3309 − 1, 5917) = gcd(3308, 5917)
+= <strong style="color:var(--green)">61 → fator!</strong>
+<strong style="color:var(--green)">5917 = 61 × 97 ✓</strong>
+<span style="color:var(--text3)">61−1 = 60 = 2²×3×5 → é 5-smooth!</span></pre>
+      </div>
+      <p style="font-size:.78rem;color:var(--text3);margin-top:.5rem">
+        <span class="tag cyan">Defesa</span> Usar primos seguros (p = 2q+1, q primo), garantindo que p−1 tem fator primo grande.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SLIDE 10 — CRIVO QUADRÁTICO ═══════ -->
+<div class="slide" data-slide="9">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.6rem">
+    <h2 class="fade-up">Ataque 4 — Crivo Quadrático (QS)</h2>
+    <span class="tag red fade-up">Sub-exponencial L<sub>n</sub>[1/2]</span>
+  </div>
+  <div class="formula-box fade-up" style="margin-bottom:1rem">
+    <span class="label">Objetivo</span>
+    <div class="katex-block">x^2 \equiv y^2 \pmod{n},\quad x \not\equiv \pm y \pmod{n} \quad\Longrightarrow\quad \gcd(x-y,\, n)\ \text{é fator de } n</div>
+  </div>
+  <div class="grid-2 fade-up-d1" style="gap:1.5rem">
+    <div>
+      <h3>Passos do Algoritmo</h3>
+      <div style="display:flex;flex-direction:column;gap:.4rem">
+        <div class="step" style="display:flex;gap:.7rem;align-items:flex-start;padding:.6rem .8rem">
+          <span class="num-badge">1</span>
+          <span style="font-size:.82rem;color:var(--text2)">Escolher base de fatores B = {2, 3, 5, 7, 11, …}</span>
+        </div>
+        <div class="step" style="display:flex;gap:.7rem;align-items:flex-start;padding:.6rem .8rem">
+          <span class="num-badge">2</span>
+          <span style="font-size:.82rem;color:var(--text2)">Para x próximos de <span class="katex-inline">\sqrt{n}</span>, calcular <span class="katex-inline">Q(x) = x^2 - n</span></span>
+        </div>
+        <div class="step" style="display:flex;gap:.7rem;align-items:flex-start;padding:.6rem .8rem">
+          <span class="num-badge">3</span>
+          <span style="font-size:.82rem;color:var(--text2)">Manter Q(x) que fatoram sobre B (são "B-smooth")</span>
+        </div>
+        <div class="step" style="display:flex;gap:.7rem;align-items:flex-start;padding:.6rem .8rem">
+          <span class="num-badge">4</span>
+          <span style="font-size:.82rem;color:var(--text2)">Representar fatorações como vetores mod 2</span>
+        </div>
+        <div class="step" style="display:flex;gap:.7rem;align-items:flex-start;padding:.6rem .8rem">
+          <span class="num-badge">5</span>
+          <span style="font-size:.82rem;color:var(--text2)">Eliminação gaussiana sobre GF(2) → combinação com expoentes pares</span>
+        </div>
+        <div class="step" style="display:flex;gap:.7rem;align-items:flex-start;padding:.6rem .8rem">
+          <span class="num-badge">6</span>
+          <span style="font-size:.82rem;color:var(--text2)"><span class="katex-inline">\gcd(x - y,\, n)</span> → fator!</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="example-box">
+        <div class="ex-title">Exemplo Simplificado: n = 15</div>
+<pre>B = {2, 3}, √15 ≈ 3.87
+Q(4) = 16−15 = 1 → {}
+Q(5) = 25−15 = 10 = 2·5 → não B-smooth
+Q(7) = 49−15 = 34 → não
+Q(8) = 64−15 = 49 → não
+
+<span style="color:var(--text3)">(Em n real, centenas de relações
+são combinadas via álgebra linear)</span></pre>
+      </div>
+      <p style="font-size:.82rem;color:var(--text3);margin-top:.6rem">
+        Eficiente até ~100 dígitos. Foi o mais rápido antes do GNFS (anos 1990).
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SLIDE 11 — GNFS ═══════ -->
+<div class="slide" data-slide="10">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.6rem">
+    <h2 class="fade-up">Ataque 5 — GNFS</h2>
+    <span class="tag red fade-up" style="font-size:.75rem">L<sub>n</sub>[1/3, 1.923] — o mais rápido clássico</span>
+  </div>
+  <p class="body-text fade-up" style="margin-bottom:1rem;font-size:.88rem">
+    O algoritmo de fatoração mais eficiente para computação clássica. Generaliza o Crivo Quadrático usando corpos de números algébricos.
+  </p>
+  <div class="grid-2 fade-up-d1" style="gap:1.5rem">
+    <div>
+      <h3>Etapas</h3>
+      <div class="step-flow" style="flex-direction:column;gap:.5rem">
+        <div class="step" style="width:100%">
+          <div class="num-badge">1</div>
+          <div class="step-title">Seleção de Polinômio</div>
+          <div class="step-desc">Encontrar f(x) grau d, <span class="katex-inline">m \in \mathbb{Z}</span> tal que <span class="katex-inline">f(m) \equiv 0 \pmod{n}</span></div>
+        </div>
+        <div class="step" style="width:100%">
+          <div class="num-badge">2</div>
+          <div class="step-title">Peneiramento (Sieving)</div>
+          <div class="step-desc">Buscar pares (a,b) smooth no lado racional E algébrico</div>
+        </div>
+        <div class="step" style="width:100%">
+          <div class="num-badge">3</div>
+          <div class="step-title">Álgebra Linear</div>
+          <div class="step-desc">Sistema sobre GF(2) → encontrar dependência</div>
+        </div>
+        <div class="step" style="width:100%">
+          <div class="num-badge">4</div>
+          <div class="step-title">Raiz Quadrada</div>
+          <div class="step-desc">Calcular raiz em corpo de números → <span class="katex-inline">x^2 \equiv y^2 \pmod{n}</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3>Recordes de Fatoração</h3>
+      <table class="data-table">
+        <thead><tr><th>Número</th><th>Bits</th><th>Dígitos</th><th>Ano</th></tr></thead>
+        <tbody>
+          <tr><td>RSA-129</td><td>426</td><td>129</td><td>1994</td></tr>
+          <tr><td>RSA-155</td><td>512</td><td>155</td><td>1999</td></tr>
+          <tr><td>RSA-200</td><td>663</td><td>200</td><td>2005</td></tr>
+          <tr><td style="color:var(--cyan);font-weight:600">RSA-250</td><td>829</td><td>250</td><td style="color:var(--cyan)">2020</td></tr>
+        </tbody>
+      </table>
+      <div class="card" style="margin-top:.8rem;background:linear-gradient(135deg,rgba(198,40,40,.05),rgba(198,40,40,.02));border-color:rgba(198,40,40,.12)">
+        <p style="font-size:.82rem;color:var(--text2)">
+          <strong style="color:var(--red)">RSA-2048</strong> (617 dígitos) está completamente fora de alcance do GNFS com hardware atual.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SLIDE 12 — SHOR ═══════ -->
+<div class="slide" data-slide="11">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.6rem">
+    <h2 class="fade-up">Ataque 6 — Algoritmo de Shor</h2>
+    <span class="tag purple fade-up" style="font-size:.8rem">O((log n)³) — POLINOMIAL!</span>
+  </div>
+  <p class="body-text fade-up" style="margin-bottom:.8rem;font-size:.88rem">
+    Usa computador quântico para encontrar o período <span class="katex-inline">r</span> de <span class="katex-inline">f(x) = a^x \bmod n</span> via Transformada Quântica de Fourier (QFT). Com r, a fatoração é direta.
+  </p>
+  <div class="grid-2 fade-up-d1" style="gap:1.5rem">
+    <div>
+      <div class="code-block">
+        <span class="lang-tag">Pseudocódigo</span>
+<span class="kw">def</span> <span class="fn">shor</span>(n):
+    a = <span class="fn">random</span>(<span class="num">2</span>, n-<span class="num">1</span>)
+    <span class="kw">if</span> gcd(a, n) > <span class="num">1</span>:
+        <span class="kw">return</span> gcd(a, n)     <span class="cm"># sorte!</span>
+
+    r = <span class="fn">quantum_period</span>(a, n)  <span class="cm"># QFT</span>
+
+    <span class="kw">if</span> r % <span class="num">2</span> == <span class="num">0</span> <span class="kw">and</span> pow(a, r//<span class="num">2</span>, n) != n-<span class="num">1</span>:
+        p = gcd(a**(r//<span class="num">2</span>) - <span class="num">1</span>, n)
+        q = gcd(a**(r//<span class="num">2</span>) + <span class="num">1</span>, n)
+        <span class="kw">return</span> p, q
+      </div>
+    </div>
+    <div>
+      <h3 style="color:var(--purple)">Status Atual</h3>
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        <div class="card">
+          <div style="font-size:.72rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.3rem">Hoje</div>
+          <p style="font-size:.82rem;color:var(--text2)">IBM fatorou 15 e 21 com qubits reais. Números RSA reais: ainda impossível.</p>
+        </div>
+        <div class="card">
+          <div style="font-size:.72rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.3rem">Necessário</div>
+          <p style="font-size:.82rem;color:var(--text2)">RSA-2048 → ~4.000 qubits lógicos (~20 milhões de qubits físicos com EC)</p>
+        </div>
+        <div class="card" style="border-color:rgba(106,27,154,.15)">
+          <div style="font-size:.72rem;color:var(--purple);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.3rem">Previsão</div>
+          <p style="font-size:.82rem;color:var(--text2)">Entre 2035 e 2050. Estratégia: criptografia híbrida (RSA + pós-quântico)</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SLIDE 13 — ATAQUES IMPLEMENTAÇÃO ═══════ -->
+<div class="slide" data-slide="12">
+  <h2 class="fade-up" style="margin-bottom:.4rem">Ataques por Falhas de Implementação</h2>
+  <p class="body-text fade-up" style="margin-bottom:1rem;font-size:.85rem">Estes ataques <strong style="color:var(--red)">NÃO</strong> quebram a matemática do RSA. Exploram erros na forma como ele é usado.</p>
+  <div class="grid-2 fade-up-d1" style="gap:1rem">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <h3 style="margin-bottom:0">Ataque de Wiener</h3><span class="tag purple">d pequeno</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">
+        Se <span class="katex-inline">d < n^{1/4}/3</span>, frações contínuas de <span class="katex-inline">e/n</span> revelam d.
+        Convergentes <span class="katex-inline">k_1/d_1, k_2/d_2 \ldots</span> — testar cada <span class="katex-inline">d_i</span> como candidato.
+      </p>
+      <p style="font-size:.75rem;color:var(--cyan);margin-top:.3rem">Defesa: nunca usar d pequeno.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <h3 style="margin-bottom:0">Ataque de Hastad</h3><span class="tag purple">broadcast</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">
+        Mesma msg m cifrada com e=3 para 3 destinatários.
+      </p>
+      <div class="formula-box" style="padding:.7rem 1rem;margin:.4rem 0">
+        <div class="katex-block">CRT \Rightarrow m^3 \bmod (n_1 \cdot n_2 \cdot n_3) \Rightarrow \sqrt[3]{m^3} = m</div>
+      </div>
+      <p style="font-size:.75rem;color:var(--cyan)">Defesa: SEMPRE usar OAEP.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <h3 style="margin-bottom:0">Bleichenbacher</h3><span class="tag red">PKCS#1 v1.5</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">
+        Ataque CCA2 adaptativo. Modifica texto cifrado → servidor diz "padding válido/inválido" (1 bit). ~10⁶ consultas → mensagem inteira recuperada!
+      </p>
+      <p style="font-size:.75rem;color:var(--cyan);margin-top:.3rem">Defesa: migrar para RSA-OAEP.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <h3 style="margin-bottom:0">Canal Lateral</h3><span class="tag red">físico</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">
+        <strong>Timing:</strong> mede tempo de decifração → infere bits de d.<br>
+        <strong>Power:</strong> consumo de energia revela operações.<br>
+        <strong>Fault:</strong> erro no CRT → <span class="katex-inline">\gcd(m'^e - c,\, n) = q</span>
+      </p>
+      <p style="font-size:.75rem;color:var(--cyan);margin-top:.3rem">Defesa: RSA blinding, tempo constante, verificação pós-decifração.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SLIDE 14 — COMPARATIVO ═══════ -->
+<div class="slide" data-slide="13">
+  <h2 class="fade-up" style="margin-bottom:1rem">Comparativo — Todos os Algoritmos</h2>
+  <div class="fade-up-d1" style="overflow-x:auto">
+    <table class="data-table">
+      <thead>
+        <tr><th>Algoritmo</th><th>Tipo</th><th>Complexidade</th><th>Alcance</th><th>Quando Usar</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Div. Tentativa</td><td><span class="tag red" style="font-size:.6rem">Fatoração</span></td><td><span class="katex-inline">O(\sqrt{n})</span></td><td>~30 dig</td><td style="font-size:.78rem">Primeiro filtro, fatores pequenos</td></tr>
+        <tr><td>ρ de Pollard</td><td><span class="tag red" style="font-size:.6rem">Fatoração</span></td><td><span class="katex-inline">O(n^{1/4})</span></td><td>~40 dig</td><td style="font-size:.78rem">Fator primo relativamente pequeno</td></tr>
+        <tr><td>p−1 Pollard</td><td><span class="tag red" style="font-size:.6rem">Fatoração</span></td><td>Depende B</td><td>Variável</td><td style="font-size:.78rem">p−1 é smooth</td></tr>
+        <tr><td>Crivo Quadrático</td><td><span class="tag red" style="font-size:.6rem">Fatoração</span></td><td><span class="katex-inline">L_n[1/2, 1]</span></td><td>~100 dig</td><td style="font-size:.78rem">Tamanho médio</td></tr>
+        <tr><td style="color:var(--cyan);font-weight:600">GNFS</td><td><span class="tag red" style="font-size:.6rem">Fatoração</span></td><td><span class="katex-inline">L_n[1/3, 1.92]</span></td><td>~250 dig</td><td style="font-size:.78rem">O melhor clássico para n grande</td></tr>
+        <tr><td style="color:var(--purple)">Shor</td><td><span class="tag purple" style="font-size:.6rem">Quântico</span></td><td><span class="katex-inline">O((\log n)^3)</span></td><td>Teórico</td><td style="font-size:.78rem">Quando houver QC viável</td></tr>
+        <tr><td>Wiener</td><td><span class="tag amber" style="font-size:.6rem">Implem.</span></td><td>Polinomial</td><td><span class="katex-inline">d < n^{1/4}</span></td><td style="font-size:.78rem">Expoente privado pequeno</td></tr>
+        <tr><td>Hastad</td><td><span class="tag amber" style="font-size:.6rem">Implem.</span></td><td>Polinomial</td><td>e pequeno</td><td style="font-size:.78rem">Broadcast sem padding</td></tr>
+        <tr><td>Bleichenbacher</td><td><span class="tag amber" style="font-size:.6rem">Implem.</span></td><td>~10⁶ queries</td><td>PKCS#1v1.5</td><td style="font-size:.78rem">Servidor revela erro padding</td></tr>
+        <tr><td>Canal Lateral</td><td><span class="tag amber" style="font-size:.6rem">Implem.</span></td><td>Variável</td><td>Físico</td><td style="font-size:.78rem">Acesso a hardware/timing</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="fade-up-d2" style="text-align:center;margin-top:1rem">
+    <p style="font-size:.9rem;color:var(--text)"><strong style="color:var(--cyan)">Segurança real</strong> = chaves grandes <span style="color:var(--text3)">(contra fatoração)</span> + implementação correta <span style="color:var(--text3)">(contra todo o resto)</span></p>
+  </div>
+</div>
+
+<!-- ═══════ SLIDE 15 — ANÁLISE CRÍTICA ═══════ -->
+<div class="slide" data-slide="14">
+  <h2 class="fade-up" style="margin-bottom:1rem">Análise Crítica e Contextualização</h2>
+  <div class="grid-2 fade-up-d1" style="gap:1rem">
+    <div class="card">
+      <h3 style="color:var(--amber)">Lição da História</h3>
+      <p style="font-size:.85rem;color:var(--text2);line-height:1.7">
+        Cada geração de ataques fortaleceu o padrão:<br>
+        PKCS#1 v1.5 → Bleichenbacher → <strong>OAEP</strong><br>
+        d pequeno → Wiener → <strong>regras de geração</strong><br>
+        tempo variável →  ataque lateral → <strong>padding probabilístico</strong>
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--green)">RSA vs. ECC</h3>
+      <table class="data-table" style="margin:0">
+        <thead><tr><th>Nível</th><th>RSA</th><th>ECC</th></tr></thead>
+        <tbody>
+          <tr><td>128 bits</td><td>3072b</td><td style="color:var(--green)">256b</td></tr>
+          <tr><td>256 bits</td><td>15360b</td><td style="color:var(--green)">512b</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:.78rem;color:var(--text3);margin-top:.4rem">ECC é mais eficiente. TLS moderno prefere ECDHE.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--purple)">Ameaça Quântica</h3>
+      <p style="font-size:.85rem;color:var(--text2);line-height:1.7">
+        Algoritmo de Shor → fatoração polinomial. Ainda não viável, mas questão de tempo. Estratégia: <strong style="color:var(--purple)">criptografia híbrida</strong> (RSA + pós-quântico) como transição.
+      </p>
+    </div>
+    <div class="card" style="border-color:rgba(0,119,182,.15)">
+      <h3>Pós-Quântico (NIST 2024)</h3>
+      <p style="font-size:.85rem;color:var(--text2);line-height:1.7">
+        <strong style="color:var(--cyan)">ML-KEM</strong> (CRYSTALS-Kyber): troca de chaves<br>
+        <strong style="color:var(--cyan)">ML-DSA</strong> (CRYSTALS-Dilithium): assinaturas<br>
+        <span style="color:var(--text3)">Baseados em problemas de reticulados, resistentes a computadores quânticos.</span>
+      </p>
+    </div>
+  </div>
+  <p class="fade-up-d2" style="font-size:.85rem;color:var(--text3);text-align:center;margin-top:.8rem">
+    RSA continua seguro com chaves ≥ 2048 bits e implementação correta, mas a <strong style="color:var(--text)">migração pós-quântica já começou</strong>.
+  </p>
+</div>
+
+<!-- ═══════ SLIDE 16 — CONCLUSÃO ═══════ -->
+<div class="slide section-header" data-slide="15" style="align-items:center;text-align:center">
+  <div class="section-num fade-up">Conclusão</div>
+  <div class="grid-2 fade-up-d1" style="gap:1.5rem;max-width:900px;margin:1.5rem auto">
+    <div class="card" style="text-align:left">
+      <h3 style="color:var(--cyan)">Elegância Matemática</h3>
+      <p style="font-size:.85rem;color:var(--text2)">RSA articula aritmética modular, Euler-Fermat, Euclides Estendido e CRT em uma aplicação real e crítica.</p>
+    </div>
+    <div class="card" style="text-align:left">
+      <h3 style="color:var(--red)">Sofisticação dos Ataques</h3>
+      <p style="font-size:.85rem;color:var(--text2)">Da divisão por tentativa ao GNFS e Shor, cada algoritmo explora uma propriedade matemática diferente.</p>
+    </div>
+    <div class="card" style="text-align:left">
+      <h3 style="color:var(--amber)">Implementação Importa</h3>
+      <p style="font-size:.85rem;color:var(--text2)">Wiener, Bleichenbacher e canal lateral mostram que a segurança depende de como o RSA é usado.</p>
+    </div>
+    <div class="card" style="text-align:left">
+      <h3 style="color:var(--purple)">Futuro Pós-Quântico</h3>
+      <p style="font-size:.85rem;color:var(--text2)">ECC como alternativa eficiente hoje. CRYSTALS-Kyber/Dilithium como destino inevitável.</p>
+    </div>
+  </div>
+  <div class="quote fade-up-d2" style="max-width:750px;text-align:left">
+    "A segurança do RSA não reside apenas na matemática — reside na disciplina de quem o implementa."
+  </div>
+</div>
+
+<!-- ═══════ SLIDE 17 — REFERÊNCIAS ═══════ -->
+<div class="slide" data-slide="16">
+  <h2 class="fade-up" style="margin-bottom:1.2rem">Referências</h2>
+  <div class="fade-up-d1" style="display:flex;flex-direction:column;gap:.5rem;max-width:850px">
+    <div class="card" style="padding:.7rem 1.2rem;display:flex;gap:.8rem;align-items:baseline">
+      <span class="tag cyan" style="font-size:.6rem;flex-shrink:0">[1]</span>
+      <span style="font-size:.82rem;color:var(--text2)">COUTINHO, S. C. <em>Criptografia.</em> IMPA/OBMEP, 2016.</span>
+    </div>
+    <div class="card" style="padding:.7rem 1.2rem;display:flex;gap:.8rem;align-items:baseline">
+      <span class="tag cyan" style="font-size:.6rem;flex-shrink:0">[2]</span>
+      <span style="font-size:.82rem;color:var(--text2)">RIVEST, R. L.; SHAMIR, A.; ADLEMAN, L. <em>A Method for Obtaining Digital Signatures and Public-Key Cryptosystems.</em> ACM, 1978.</span>
+    </div>
+    <div class="card" style="padding:.7rem 1.2rem;display:flex;gap:.8rem;align-items:baseline">
+      <span class="tag cyan" style="font-size:.6rem;flex-shrink:0">[3]</span>
+      <span style="font-size:.82rem;color:var(--text2)">BONEH, D. <em>Twenty Years of Attacks on the RSA Cryptosystem.</em> AMS, 1999.</span>
+    </div>
+    <div class="card" style="padding:.7rem 1.2rem;display:flex;gap:.8rem;align-items:baseline">
+      <span class="tag cyan" style="font-size:.6rem;flex-shrink:0">[4]</span>
+      <span style="font-size:.82rem;color:var(--text2)">WIENER, M. J. <em>Cryptanalysis of Short RSA Secret Exponents.</em> IEEE, 1990.</span>
+    </div>
+    <div class="card" style="padding:.7rem 1.2rem;display:flex;gap:.8rem;align-items:baseline">
+      <span class="tag cyan" style="font-size:.6rem;flex-shrink:0">[5]</span>
+      <span style="font-size:.82rem;color:var(--text2)">SHOR, P. W. <em>Polynomial-Time Algorithms for Prime Factorization and Discrete Logarithms on a Quantum Computer.</em> SIAM, 1997.</span>
+    </div>
+    <div class="card" style="padding:.7rem 1.2rem;display:flex;gap:.8rem;align-items:baseline">
+      <span class="tag cyan" style="font-size:.6rem;flex-shrink:0">[6]</span>
+      <span style="font-size:.82rem;color:var(--text2)">MENEZES, A. J. et al. <em>Handbook of Applied Cryptography.</em> CRC Press, 1996.</span>
+    </div>
+    <div class="card" style="padding:.7rem 1.2rem;display:flex;gap:.8rem;align-items:baseline">
+      <span class="tag cyan" style="font-size:.6rem;flex-shrink:0">[7]</span>
+      <span style="font-size:.82rem;color:var(--text2)">NIST. <em>Post-Quantum Cryptography Standardization,</em> 2024.</span>
+    </div>
+    <div class="card" style="padding:.7rem 1.2rem;display:flex;gap:.8rem;align-items:baseline">
+      <span class="tag cyan" style="font-size:.6rem;flex-shrink:0">[8]</span>
+      <span style="font-size:.82rem;color:var(--text2)">BLEICHENBACHER, D. <em>Chosen Ciphertext Attacks Against PKCS#1.</em> Springer/CRYPTO, 1998.</span>
+    </div>
+  </div>
+  <p class="fade-up-d2" style="margin-top:1rem;font-size:.78rem;color:var(--text3);text-align:center">CEFET-MG — Departamento de Computação · Belo Horizonte, 2026</p>
+</div>
+
+</div><!-- /deck -->
+
+<!-- ═══════ NAVIGATION ═══════ -->
+<div class="nav">
+  <button id="prevBtn" onclick="changeSlide(-1)">◀</button>
+  <div class="dots" id="dots"></div>
+  <button id="nextBtn" onclick="changeSlide(1)">▶</button>
+  <div class="counter" id="counter">1 / 17</div>
+</div>
+
+<script>
+// ── Slide engine
+let current = 0;
+const slides = document.querySelectorAll('.slide');
+const total = slides.length;
+const dotsEl = document.getElementById('dots');
+const counterEl = document.getElementById('counter');
+const progressEl = document.getElementById('progress');
+
+// Build dots
+for (let i = 0; i < total; i++) {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 0 ? ' active' : '');
+  d.onclick = () => goToSlide(i);
+  dotsEl.appendChild(d);
+}
+
+function goToSlide(n) {
+  slides[current].classList.remove('active');
+  dotsEl.children[current].classList.remove('active');
+  current = n;
+  slides[current].classList.add('active');
+  dotsEl.children[current].classList.add('active');
+  counterEl.textContent = `${current + 1} / ${total}`;
+  progressEl.style.width = `${((current + 1) / total) * 100}%`;
+}
+
+function changeSlide(dir) {
+  let next = current + dir;
+  if (next < 0) next = 0;
+  if (next >= total) next = total - 1;
+  goToSlide(next);
+}
+
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); changeSlide(1); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); changeSlide(-1); }
+  if (e.key === 'Home') { e.preventDefault(); goToSlide(0); }
+  if (e.key === 'End') { e.preventDefault(); goToSlide(total - 1); }
+});
+
+// Touch support
+let touchStartX = 0;
+document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; });
+document.addEventListener('touchend', e => {
+  const diff = e.changedTouches[0].screenX - touchStartX;
+  if (Math.abs(diff) > 50) changeSlide(diff < 0 ? 1 : -1);
+});
+
+// Init progress
+progressEl.style.width = `${(1 / total) * 100}%`;
+
+// ── KaTeX rendering
+document.addEventListener('DOMContentLoaded', () => {
+  // Render block formulas
+  document.querySelectorAll('.katex-block').forEach(el => {
+    katex.render(el.textContent.trim(), el, { displayMode: true, throwOnError: false });
+  });
+  // Render inline formulas
+  document.querySelectorAll('.katex-inline').forEach(el => {
+    katex.render(el.textContent.trim(), el, { displayMode: false, throwOnError: false });
+  });
+});
+</script>
+</body>
+</html>
